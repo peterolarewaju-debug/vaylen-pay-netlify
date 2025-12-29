@@ -2,10 +2,11 @@
   "name": "vaylen-pay-netlify",
   "version": "1.0.0",
   "private": true,
+  "scripts": {
+    "build": "echo \"no build step\""
+  },
   "dependencies": {
     "stripe": "^16.0.0"
   },
-  "engines": {
-    "node": ">=18"
-  }
+  "engines": { "node": ">=18" }
 }
