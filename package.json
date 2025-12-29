@@ -1,12 +1,11 @@
 {
-  "name": "vaylen-pay",
+  "name": "vaylen-pay-netlify",
   "version": "1.0.0",
   "private": true,
-  "type": "module",
-  "scripts": {
-    "build": "echo \"no build\""
-  },
   "dependencies": {
     "stripe": "^16.0.0"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
