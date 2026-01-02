@@ -2,14 +2,15 @@
 const Stripe = require('stripe');
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
-// Tiny helper for CORS
+// CORS headers (use '*' while testing; lock to your domain when done)
 const headers = {
-  'Access-Control-Allow-Origin': '*',           // tighten later: 'https://joinvaylen.com'
+  'Access-Control-Allow-Origin': '*', // change to 'https://www.joinvaylen.com' later
   'Access-Control-Allow-Methods': 'POST,OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
 exports.handler = async (event) => {
+  // Preflight
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: 'ok' };
   }
@@ -24,22 +25,32 @@ exports.handler = async (event) => {
     let unit_amount, curr;
 
     if (price) {
-      // Normal mode: use a Stripe Price to derive amount & currency
+      // Normal path: look up a Stripe Price and use its amount/currency
       const p = await stripe.prices.retrieve(price);
+
       if (!p || !p.active || !p.unit_amount || !p.currency) {
-        return { statusCode: 400, headers, body: JSON.stringify({ error: 'Price not usable' }) };
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({
+            error:
+              `Price not usable. Check that the Price ID exists, is active, and has amount & currency. price=${price}`,
+          }),
+        };
       }
       unit_amount = p.unit_amount;
-      curr       = p.currency;
+      curr = p.currency;
     } else if (amount && currency) {
-      // Smoke-test mode: caller provides amount & currency directly
+      // Fallback path: explicit amount/currency
       unit_amount = Number(amount);
-      curr        = String(currency).toLowerCase();
+      curr = String(currency).toLowerCase();
     } else {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ error: 'Provide either "price" or "amount"+"currency".' })
+        body: JSON.stringify({
+          error: 'Provide either "price" or both "amount" and "currency".',
+        }),
       };
     }
 
@@ -48,20 +59,23 @@ exports.handler = async (event) => {
       currency: curr,
       automatic_payment_methods: { enabled: true },
       ...(email ? { receipt_email: email } : {}),
-      metadata: { source: 'netlify-payment-element' }
+      metadata: {
+        source: 'netlify-payment-element',
+        price: price || '',
+      },
     });
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ clientSecret: intent.client_secret })
+      body: JSON.stringify({ clientSecret: intent.client_secret }),
     };
   } catch (err) {
     console.error(err);
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: err.message || 'Server error' })
+      body: JSON.stringify({ error: err.message || 'Server error' }),
     };
   }
 };
